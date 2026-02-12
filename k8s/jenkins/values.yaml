@@ -1,0 +1,72 @@
+controller:
+  admin:
+    createSecret: true
+  serviceType: ClusterIP
+  installPlugins:
+    - kubernetes:4306.vc91e951ea_eb_d
+    - workflow-aggregator:596.v8c21c963d92d
+    - git:5.2.1
+    - credentials-binding:642.v737c34dea_6c2
+    - configuration-as-code:1810.v9b_c30a_249a_4c
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      kubernetes-cloud: |
+        jenkins:
+          clouds:
+            - kubernetes:
+                name: "kubernetes"
+                namespace: "jenkins"
+                jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
+                containerCapStr: "50"
+                templates:
+                  - name: "kaniko-agent"
+                    namespace: "jenkins"
+                    label: "kaniko-agent"
+                    yaml: |
+                      apiVersion: v1
+                      kind: Pod
+                      metadata:
+                        labels:
+                          jenkins: agent
+                      spec:
+                        serviceAccountName: jenkins
+                        containers:
+                          - name: jnlp
+                            image: jenkins/inbound-agent:latest
+                            resources:
+                              requests:
+                                cpu: "100m"
+                                memory: "256Mi"
+                          - name: kaniko
+                            image: gcr.io/kaniko-project/executor:latest
+                            command:
+                              - sleep
+                            args:
+                              - 99d
+                            volumeMounts:
+                              - name: docker-config
+                                mountPath: /kaniko/.docker
+                        volumes:
+                          - name: docker-config
+                            secret:
+                              secretName: regcred
+                  - name: "kubectl-agent"
+                    namespace: "jenkins"
+                    label: "kubectl-agent"
+                    yaml: |
+                      apiVersion: v1
+                      kind: Pod
+                      spec:
+                        serviceAccountName: jenkins
+                        containers:
+                          - name: jnlp
+                            image: jenkins/inbound-agent:latest
+                          - name: kubectl
+                            image: bitnami/kubectl:latest
+                            command:
+                              - sleep
+                            args:
+                              - 99d
+agent:
+  enabled: false
